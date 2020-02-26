@@ -20,9 +20,13 @@ else:
 import mock
 
 from postmark import (
-    PMBatchMail, PMMail, PMMailInactiveRecipientException,
-    PMMailUnprocessableEntityException, PMMailServerErrorException,
-    PMMailMissingValueException, PMBounceManager
+    PMBatchMail,
+    PMMail,
+    PMMailInactiveRecipientException,
+    PMMailUnprocessableEntityException,
+    PMMailServerErrorException,
+    PMMailMissingValueException,
+    PMBounceManager,
 )
 
 from django.conf import settings
@@ -34,11 +38,17 @@ class PMMailTests(unittest.TestCase):
         json_payload.write(b'{"Message": "", "ErrorCode": 406}')
         json_payload.seek(0)
 
-        message = PMMail(sender='from@example.com', to='to@example.com',
-            subject='Subject', text_body='Body', api_key='test')
+        message = PMMail(
+            sender="from@example.com",
+            to="to@example.com",
+            subject="Subject",
+            text_body="Body",
+            api_key="test",
+        )
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            422, '', {}, json_payload)):
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 422, "", {}, json_payload)
+        ):
             self.assertRaises(PMMailInactiveRecipientException, message.send)
 
     def test_422_error_unprocessable_entity(self):
@@ -46,19 +56,29 @@ class PMMailTests(unittest.TestCase):
         json_payload.write(b'{"Message": "", "ErrorCode": 422}')
         json_payload.seek(0)
 
-        message = PMMail(sender='from@example.com', to='to@example.com',
-            subject='Subject', text_body='Body', api_key='test')
+        message = PMMail(
+            sender="from@example.com",
+            to="to@example.com",
+            subject="Subject",
+            text_body="Body",
+            api_key="test",
+        )
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            422, '', {}, json_payload)):
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 422, "", {}, json_payload)
+        ):
             self.assertRaises(PMMailUnprocessableEntityException, message.send)
 
     def test_500_error_server_error(self):
-        message = PMMail(sender='from@example.com', to='to@example.com',
-            subject='Subject', text_body='Body', api_key='test')
+        message = PMMail(
+            sender="from@example.com",
+            to="to@example.com",
+            subject="Subject",
+            text_body="Body",
+            api_key="test",
+        )
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            500, '', {}, None)):
+        with mock.patch("postmark.core.urlopen", side_effect=HTTPError("", 500, "", {}, None)):
             self.assertRaises(PMMailServerErrorException, message.send)
 
     def assert_missing_value_exception(self, message_func, error_message):
@@ -68,106 +88,168 @@ class PMMailTests(unittest.TestCase):
 
     def test_send(self):
         # Confirm send() still works as before use_template was added
-        message = PMMail(sender='from@example.com', to='to@example.com',
-            subject='Subject', text_body='Body', api_key='test')
+        message = PMMail(
+            sender="from@example.com",
+            to="to@example.com",
+            subject="Subject",
+            text_body="Body",
+            api_key="test",
+        )
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            200, '', {}, None)):
+        with mock.patch("postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)):
             message.send()
 
     def test_missing_subject(self):
         # No subject should raise exception when using send()
-        message = PMMail(sender='from@example.com', to='to@example.com',
-                         text_body='Body', api_key='test')
-        self.assert_missing_value_exception(
-            message.send,
-            'Cannot send an e-mail without a subject'
+        message = PMMail(
+            sender="from@example.com", to="to@example.com", text_body="Body", api_key="test"
         )
+        self.assert_missing_value_exception(message.send, "Cannot send an e-mail without a subject")
 
     def test_missing_recipient_fields(self):
         # No recipient should raise exception when using send()
-        message = PMMail(sender='from@example.com', subject='test',
-                         text_body='Body', api_key='test')
+        message = PMMail(
+            sender="from@example.com", subject="test", text_body="Body", api_key="test"
+        )
         self.assert_missing_value_exception(
             message.send,
-            'Cannot send an e-mail without at least one recipient (.to field or .bcc field)'
+            "Cannot send an e-mail without at least one recipient (.to field or .bcc field)",
         )
 
     def test_missing_to_field_but_populated_bcc_field(self):
         # No to field but populated bcc field should not raise exception when using send()
-        message = PMMail(sender='from@example.com', subject='test', bcc='to@example.com',
-                         text_body='Body', api_key='test')
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('', 200, '', {}, None)):
+        message = PMMail(
+            sender="from@example.com",
+            subject="test",
+            bcc="to@example.com",
+            text_body="Body",
+            api_key="test",
+        )
+        with mock.patch("postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)):
             message.send()
 
     def test_check_values_bad_template_data(self):
         # Try sending with template ID only
-        message = PMMail(api_key='test', sender='from@example.com', to='to@example.com', template_id=1)
+        message = PMMail(
+            api_key="test", sender="from@example.com", to="to@example.com", template_id=1
+        )
         self.assert_missing_value_exception(
             message.send,
-            'Cannot send a template e-mail without a both template_id and template_model set'
+            "Cannot send a template e-mail without a both template_id and template_model set",
+        )
+
+    def test_check_values_bad_template_data_alias(self):
+        # Try sending with template ID only
+        message = PMMail(
+            api_key="test", sender="from@example.com", to="to@example.com", template_alias="alias"
+        )
+        self.assert_missing_value_exception(
+            message.send,
+            "Cannot send a template e-mail without a both template_id and template_model set",
         )
 
     def test_send_with_template(self):
         # Both template_id and template_model are set, so send should work.
-        message = PMMail(api_key='test', sender='from@example.com', to='to@example.com',
-                         template_id=1, template_model={'junk': 'more junk'})
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            200, '', {}, None)):
+        message = PMMail(
+            api_key="test",
+            sender="from@example.com",
+            to="to@example.com",
+            template_id=1,
+            template_model={"junk": "more junk"},
+        )
+        with mock.patch("postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)):
             message.send()
 
     def test_inline_attachments(self):
-        image = MIMEImage(b'image_file', 'png', name='image.png')
-        image_with_id = MIMEImage(b'inline_image_file', 'png', name='image_with_id.png')
-        image_with_id.add_header('Content-ID', '<image2@postmarkapp.com>')
-        inline_image = MIMEImage(b'inline_image_file', 'png', name='inline_image.png')
-        inline_image.add_header('Content-ID', '<image3@postmarkapp.com>')
-        inline_image.add_header('Content-Disposition', 'inline', filename='inline_image.png')
+        image = MIMEImage(b"image_file", "png", name="image.png")
+        image_with_id = MIMEImage(b"inline_image_file", "png", name="image_with_id.png")
+        image_with_id.add_header("Content-ID", "<image2@postmarkapp.com>")
+        inline_image = MIMEImage(b"inline_image_file", "png", name="inline_image.png")
+        inline_image.add_header("Content-ID", "<image3@postmarkapp.com>")
+        inline_image.add_header("Content-Disposition", "inline", filename="inline_image.png")
 
         expected = [
-            {'Name': 'TextFile', 'Content': 'content', 'ContentType': 'text/plain'},
-            {'Name': 'InlineImage', 'Content': 'image_content', 'ContentType': 'image/png', 'ContentID': 'cid:image@postmarkapp.com'},
-            {'Name': 'image.png', 'Content': 'aW1hZ2VfZmlsZQ==', 'ContentType': 'image/png'},
-            {'Name': 'image_with_id.png', 'Content': 'aW5saW5lX2ltYWdlX2ZpbGU=', 'ContentType': 'image/png', 'ContentID': 'image2@postmarkapp.com'},
-            {'Name': 'inline_image.png', 'Content': 'aW5saW5lX2ltYWdlX2ZpbGU=', 'ContentType': 'image/png', 'ContentID': 'cid:image3@postmarkapp.com'},
+            {"Name": "TextFile", "Content": "content", "ContentType": "text/plain"},
+            {
+                "Name": "InlineImage",
+                "Content": "image_content",
+                "ContentType": "image/png",
+                "ContentID": "cid:image@postmarkapp.com",
+            },
+            {"Name": "image.png", "Content": "aW1hZ2VfZmlsZQ==", "ContentType": "image/png"},
+            {
+                "Name": "image_with_id.png",
+                "Content": "aW5saW5lX2ltYWdlX2ZpbGU=",
+                "ContentType": "image/png",
+                "ContentID": "image2@postmarkapp.com",
+            },
+            {
+                "Name": "inline_image.png",
+                "Content": "aW5saW5lX2ltYWdlX2ZpbGU=",
+                "ContentType": "image/png",
+                "ContentID": "cid:image3@postmarkapp.com",
+            },
         ]
         json_message = PMMail(
-            sender='from@example.com', to='to@example.com', subject='Subject', text_body='Body', api_key='test',
+            sender="from@example.com",
+            to="to@example.com",
+            subject="Subject",
+            text_body="Body",
+            api_key="test",
             attachments=[
-                ('TextFile', 'content', 'text/plain'),
-                ('InlineImage', 'image_content', 'image/png', 'cid:image@postmarkapp.com'),
+                ("TextFile", "content", "text/plain"),
+                ("InlineImage", "image_content", "image/png", "cid:image@postmarkapp.com"),
                 image,
                 image_with_id,
                 inline_image,
-            ]
+            ],
         ).to_json_message()
-        assert len(json_message['Attachments']) == len(expected)
-        for orig, attachment in zip(expected, json_message['Attachments']):
+        assert len(json_message["Attachments"]) == len(expected)
+        for orig, attachment in zip(expected, json_message["Attachments"]):
             for k, v in orig.items():
                 assert orig[k] == attachment[k].rstrip()
 
     def test_send_metadata(self):
-        message = PMMail(api_key='test', sender='from@example.com', to='to@example.com',
-                         subject='test', text_body='test', metadata={'test': 'test'})
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            200, '', {}, None)):
+        message = PMMail(
+            api_key="test",
+            sender="from@example.com",
+            to="to@example.com",
+            subject="test",
+            text_body="test",
+            metadata={"test": "test"},
+        )
+        with mock.patch("postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)):
             message.send()
 
     def test_send_metadata_invalid_format(self):
-        self.assertRaises(TypeError, PMMail, api_key='test', sender='from@example.com', to='to@example.com',
-                         subject='test', text_body='test', metadata={'test': {}})
+        self.assertRaises(
+            TypeError,
+            PMMail,
+            api_key="test",
+            sender="from@example.com",
+            to="to@example.com",
+            subject="test",
+            text_body="test",
+            metadata={"test": {}},
+        )
 
 
 class PMBatchMailTests(unittest.TestCase):
     def test_406_error_inactive_recipient(self):
         messages = [
             PMMail(
-                sender='from@example.com', to='to@example.com',
-                subject='Subject', text_body='Body', api_key='test'
+                sender="from@example.com",
+                to="to@example.com",
+                subject="Subject",
+                text_body="Body",
+                api_key="test",
             ),
             PMMail(
-                sender='from@example.com', to='to@example.com',
-                subject='Subject', text_body='Body', api_key='test'
+                sender="from@example.com",
+                to="to@example.com",
+                subject="Subject",
+                text_body="Body",
+                api_key="test",
             ),
         ]
 
@@ -175,21 +257,28 @@ class PMBatchMailTests(unittest.TestCase):
         json_payload.write(b'{"Message": "", "ErrorCode": 406}')
         json_payload.seek(0)
 
-        batch = PMBatchMail(messages=messages, api_key='test')
+        batch = PMBatchMail(messages=messages, api_key="test")
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            422, '', {}, json_payload)):
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 422, "", {}, json_payload)
+        ):
             self.assertRaises(PMMailInactiveRecipientException, batch.send)
 
     def test_422_error_unprocessable_entity(self):
         messages = [
             PMMail(
-                sender='from@example.com', to='to@example.com',
-                subject='Subject', text_body='Body', api_key='test'
+                sender="from@example.com",
+                to="to@example.com",
+                subject="Subject",
+                text_body="Body",
+                api_key="test",
             ),
             PMMail(
-                sender='from@example.com', to='to@example.com',
-                subject='Subject', text_body='Body', api_key='test'
+                sender="from@example.com",
+                to="to@example.com",
+                subject="Subject",
+                text_body="Body",
+                api_key="test",
             ),
         ]
 
@@ -197,72 +286,87 @@ class PMBatchMailTests(unittest.TestCase):
         json_payload.write(b'{"Message": "", "ErrorCode": 422}')
         json_payload.seek(0)
 
-        batch = PMBatchMail(messages=messages, api_key='test')
+        batch = PMBatchMail(messages=messages, api_key="test")
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            422, '', {}, json_payload)):
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 422, "", {}, json_payload)
+        ):
             self.assertRaises(PMMailUnprocessableEntityException, batch.send)
 
     def test_500_error_server_error(self):
         messages = [
             PMMail(
-                sender='from@example.com', to='to@example.com',
-                subject='Subject', text_body='Body', api_key='test'
+                sender="from@example.com",
+                to="to@example.com",
+                subject="Subject",
+                text_body="Body",
+                api_key="test",
             ),
             PMMail(
-                sender='from@example.com', to='to@example.com',
-                subject='Subject', text_body='Body', api_key='test'
+                sender="from@example.com",
+                to="to@example.com",
+                subject="Subject",
+                text_body="Body",
+                api_key="test",
             ),
         ]
 
-        batch = PMBatchMail(messages=messages, api_key='test')
+        batch = PMBatchMail(messages=messages, api_key="test")
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('',
-            500, '', {}, None)):
+        with mock.patch("postmark.core.urlopen", side_effect=HTTPError("", 500, "", {}, None)):
             self.assertRaises(PMMailServerErrorException, batch.send)
 
 
 class PMBounceManagerTests(unittest.TestCase):
     def test_activate(self):
-        bounce = PMBounceManager(api_key='test')
+        bounce = PMBounceManager(api_key="test")
 
-        with mock.patch('postmark.core.HTTPConnection.getresponse') as mock_response:
+        with mock.patch("postmark.core.HTTPConnection.getresponse") as mock_response:
             mock_response.return_value = StringIO('{"test": "test"}')
-            self.assertEqual(bounce.activate(1), {'test': 'test'})
+            self.assertEqual(bounce.activate(1), {"test": "test"})
 
 
 class EmailBackendTests(TestCase):
-
     def setUp(self):
-        self.backend = EmailBackend(api_key='dummy')
+        self.backend = EmailBackend(api_key="dummy")
 
     def test_send_multi_alternative_html_email(self):
         # build a message and send it
         message = EmailMultiAlternatives(
             connection=self.backend,
-            from_email='from@test.com', to=['recipient@test.com'], subject='html test', body='hello there'
+            from_email="from@test.com",
+            to=["recipient@test.com"],
+            subject="html test",
+            body="hello there",
         )
-        message.attach_alternative('<b>hello</b> there', 'text/html')
+        message.attach_alternative("<b>hello</b> there", "text/html")
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('', 200, '', {}, None)) as transport:
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)
+        ) as transport:
             message.send()
-            data = json.loads(transport.call_args[0][0].data.decode('utf-8'))
-            self.assertEqual('hello there', data['TextBody'])
-            self.assertEqual('<b>hello</b> there', data['HtmlBody'])
+            data = json.loads(transport.call_args[0][0].data.decode("utf-8"))
+            self.assertEqual("hello there", data["TextBody"])
+            self.assertEqual("<b>hello</b> there", data["HtmlBody"])
 
     def test_send_content_subtype_email(self):
         # build a message and send it
         message = EmailMessage(
             connection=self.backend,
-            from_email='from@test.com', to=['recipient@test.com'], subject='html test', body='<b>hello</b> there'
+            from_email="from@test.com",
+            to=["recipient@test.com"],
+            subject="html test",
+            body="<b>hello</b> there",
         )
-        message.content_subtype = 'html'
+        message.content_subtype = "html"
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('', 200, '', {}, None)) as transport:
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)
+        ) as transport:
             message.send()
-            data = json.loads(transport.call_args[0][0].data.decode('utf-8'))
-            self.assertEqual('<b>hello</b> there', data['HtmlBody'])
-            self.assertFalse('TextBody' in data)
+            data = json.loads(transport.call_args[0][0].data.decode("utf-8"))
+            self.assertEqual("<b>hello</b> there", data["HtmlBody"])
+            self.assertFalse("TextBody" in data)
 
     def test_send_multi_alternative_with_subtype_html_email(self):
         """
@@ -272,29 +376,28 @@ class EmailBackendTests(TestCase):
         """
         message = EmailMultiAlternatives(
             connection=self.backend,
-            from_email='from@test.com', to=['recipient@test.com'], subject='html test', body='<b>hello</b> there'
+            from_email="from@test.com",
+            to=["recipient@test.com"],
+            subject="html test",
+            body="<b>hello</b> there",
         )
         # NO alternatives attached.  subtype specified instead
-        message.content_subtype = 'html'
+        message.content_subtype = "html"
 
-        with mock.patch('postmark.core.urlopen', side_effect=HTTPError('', 200, '', {}, None)) as transport:
+        with mock.patch(
+            "postmark.core.urlopen", side_effect=HTTPError("", 200, "", {}, None)
+        ) as transport:
             message.send()
-            data = json.loads(transport.call_args[0][0].data.decode('utf-8'))
-            self.assertFalse('TextBody' in data)
-            self.assertEqual('<b>hello</b> there', data['HtmlBody'])
+            data = json.loads(transport.call_args[0][0].data.decode("utf-8"))
+            self.assertFalse("TextBody" in data)
+            self.assertEqual("<b>hello</b> there", data["HtmlBody"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if not settings.configured:
         settings.configure(
-            DATABASES={
-                'default': {
-                    'ENGINE': 'django.db.backends.sqlite3',
-                    'NAME': ':memory:'
-                }
-            },
-            INSTALLED_APPS=[
-            ],
+            DATABASES={"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}},
+            INSTALLED_APPS=[],
             MIDDLEWARE_CLASSES=[],
         )
 
